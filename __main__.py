@@ -2,15 +2,43 @@ import tkinter
 from tkinter import ttk
 import abc
 
-from Include.enums.Sex_enum import Sex
 from Include.generateService import *
 
 
-def generate_person() -> str:
-    result = ""
-    result += generate_name(Sex.MALE)
-    result += generate_surname()
-    result += str(generate_age())
+def generate_column_name(Window) -> str:
+    result = "INSERT INTO "
+    result += "`" + Window.input_table_name.get() + "`("
+    if Window.checkboxName.instate(['selected']):
+        result += "`" + Window.input_name.get() + "`, "
+    if Window.checkbox_surname.instate(['selected']):
+        result += "`" + Window.input_surname.get() + "`, "
+    if Window.checkbox_sex.instate(['selected']):
+        result += "`" + Window.input_sex.get() + "`, "
+    if Window.checkbox_age.instate(['selected']):
+        result += "`" + Window.input_age.get() + "`, "
+
+    result = result[:len(result) - 2]
+    result += ")"
+    if len(result) == 7:
+        return "NULL"
+    return result + "\n"
+
+
+def generate_person(Window, gender: Sex) -> str:
+    result = "("
+    if Window.checkboxName.instate(['selected']):
+        result += "'" + generate_name(gender) + "', "
+    if Window.checkbox_surname.instate(['selected']):
+        result += "'" + generate_surname() + "', "
+    if Window.checkbox_sex.instate(['selected']):
+        result += "'" + gender.name + "', "
+    if Window.checkbox_age.instate(['selected']):
+        result += "'" + str(generate_age()) + "', "
+
+    result = result[:len(result) - 2]
+    result += ")"
+    if len(result) == 3:
+        return "NULL"
     return result
 
 
@@ -82,36 +110,46 @@ class GeneratePersonWindow(Window):
         # Table Name
         self.label_table_name = ttk.Label(self.frame_table_name, text='Table name:')
         self.input_table_name = ttk.Entry(self.frame_table_name, state='normal')
+        self.input_table_name.insert(tkinter.INSERT, "person")
 
         # Labels
-        self.label_column_name = ttk.Label(self.contentframe, text='Column name:')
+        self.label_column_name = ttk.Label(self.contentframe, text='Column:')
         self.label_to_generate = ttk.Label(self.contentframe, text='To generate:')
-        self.label_in_queue = ttk.Label(self.contentframe, text='In queue:')
+        self.label_in_queue = ttk.Label(self.contentframe, text='Column name:')
 
         # Name
         self.label_name = ttk.Label(self.contentframe, text='Name:')
         self.checkboxName = ttk.Checkbutton(self.contentframe)
-        self.input_name = ttk.Entry(self.contentframe, validate='key', validatecommand=(vcmd, '%P'))
+        self.checkboxName.state(['selected'])
+        self.input_name = ttk.Entry(self.contentframe, validate='key')
+        self.input_name.insert(tkinter.INSERT, "name")
 
         # Surname
         self.label_surname = ttk.Label(self.contentframe, text='Surname:')
         self.checkbox_surname = ttk.Checkbutton(self.contentframe)
-        self.input_surname = ttk.Entry(self.contentframe, validate='key', validatecommand=(vcmd, '%P'))
+        self.checkbox_surname.state(['selected'])
+        self.input_surname = ttk.Entry(self.contentframe, validate='key')
+        self.input_surname.insert(tkinter.INSERT, "surname")
 
         # Sex
         self.label_sex = ttk.Label(self.contentframe, text='Sex:')
         self.checkbox_sex = ttk.Checkbutton(self.contentframe)
-        self.input_sex = ttk.Entry(self.contentframe, validate='key', validatecommand=(vcmd, '%P'))
+        self.checkbox_sex.state(['selected'])
+        self.input_sex = ttk.Entry(self.contentframe, validate='key')
+        self.input_sex.insert(tkinter.INSERT, "gender")
 
         # Age
         self.label_age = ttk.Label(self.contentframe, text='Age:')
         self.checkbox_age = ttk.Checkbutton(self.contentframe)
-        self.input_age = ttk.Entry(self.contentframe, validate='key', validatecommand=(vcmd, '%P'))
+        self.checkbox_age.state(['selected'])
+        self.input_age = ttk.Entry(self.contentframe, validate='key')
+        self.input_age.insert(tkinter.INSERT, "age")
 
         # Amount of data to generate
         self.label_data_amount = ttk.Label(self.data_ammount_frame, text='Data amount:')
         self.input_data_amount = ttk.Entry(self.data_ammount_frame, validate='key', validatecommand=(vcmd, '%P'),
                                            textvariable=inputValue)
+        self.input_data_amount.insert(tkinter.INSERT, 50)
 
         self.btn_do = ttk.Button(self.parent, text='Action', command=self.action_button)
         self.btn_cancel = ttk.Button(self.parent, text='Cancel', command=self.close_win)
@@ -170,9 +208,23 @@ class GeneratePersonWindow(Window):
         for child in self.data_ammount_frame.winfo_children():
             child.grid_configure(padx=2, pady=1)
 
-
     def action_button(self):  # text = self.input_name.get().strip()
-        print(generate_person())
+        file_name = self.input_table_name.get()
+        dataSize = int(self.input_data_amount.get())
+        if len(file_name) > 1 and dataSize > 0:
+            file = open(file_name + ".sql", "w")
+            file.seek(0, 2)
+            file.write(generate_column_name(self))
+            file.write("VALUES ")
+            for x in range(dataSize):
+                file.write(generate_person(self, Sex.MALE))
+                if x != dataSize - 1:
+                    file.write(",\n")
+            file.write(";")
+            file.close()
+            print("Correctly generate " + str(dataSize) + " entity in " + file_name + ".sql file!")
+        else:
+            print("Wrong input values")
 
 
 class GUI(ttk.Frame):

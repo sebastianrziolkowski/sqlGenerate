@@ -2,78 +2,42 @@ import tkinter
 from tkinter import ttk
 import abc
 
-from Include.generateService import *
+from Include.services.generateService import *
 
 
-def generate_column_name(Window) -> str:
-    result = "INSERT INTO "
-    result += "`" + Window.input_table_name.get() + "`("
-    if Window.checkboxName.instate(['selected']):
-        result += "`" + Window.input_name.get() + "`, "
-    if Window.checkbox_surname.instate(['selected']):
-        result += "`" + Window.input_surname.get() + "`, "
-    if Window.checkbox_sex.instate(['selected']):
-        result += "`" + Window.input_sex.get() + "`, "
-    if Window.checkbox_age.instate(['selected']):
-        result += "`" + Window.input_age.get() + "`, "
-
-    result = result[:len(result) - 2]
-    result += ")"
-    if len(result) == 7:
-        return "NULL"
-    return result + "\n"
+def any_person_column_selected(window) -> bool:
+    return window.checkboxName.instate(['selected']) or window.checkbox_surname.instate(
+        ['selected']) or window.checkbox_sex.instate(['selected']) or window.checkbox_age.instate(['selected'])
 
 
-def generate_person(Window, gender: Sex) -> str:
-    result = "("
-    if Window.checkboxName.instate(['selected']):
-        result += "'" + generate_name(gender) + "', "
-    if Window.checkbox_surname.instate(['selected']):
-        result += "'" + generate_surname() + "', "
-    if Window.checkbox_sex.instate(['selected']):
-        result += "'" + gender.name + "', "
-    if Window.checkbox_age.instate(['selected']):
-        result += "'" + str(generate_age()) + "', "
-
-    result = result[:len(result) - 2]
-    result += ")"
-    if len(result) == 3:
-        return "NULL"
-    return result
+def not_empty(p):
+    if p.strip():
+        valid = True
+    else:
+        print("Error: Field must not be empty.")
+        valid = False
+    return valid
 
 
 class Window(ttk.Frame):
-    """Abstract base class for a popup window"""
     __metaclass__ = abc.ABCMeta
 
     def __init__(self, parent):
         ttk.Frame.__init__(self, parent)
         self.parent = parent
         self.parent.resizable(width=False, height=False)
-        self.validate_notempty = (self.register(self.notEmpty), '%P')
+        self.validate_not_empty = (self.register(not_empty), '%P')
         self.init_gui()
 
     @abc.abstractmethod
     def init_gui(self):
-        '''Initiates GUI of any popup window'''
         pass
 
     @abc.abstractmethod
     def action_button(self):
-        '''Does something that all popup windows need to do'''
         pass
 
-    def notEmpty(self, P):
-        '''Validates Entry fields to ensure they aren't empty'''
-        if P.strip():
-            valid = True
-        else:
-            print("Error: Field must not be empty.")  # Prints to console
-            valid = False
-        return valid
-
     def close_win(self):
-        '''Closes window'''
         self.parent.destroy()
 
 
@@ -84,7 +48,7 @@ class GeneratePersonWindow(Window):
         self.parent.columnconfigure(0, weight=1)
         self.parent.rowconfigure(3, weight=1)
 
-        ##Validator
+        # Validator
         def validate_float(inp):
             try:
                 float(inp)
@@ -131,7 +95,7 @@ class GeneratePersonWindow(Window):
         self.input_surname = ttk.Entry(self.contentframe, validate='key')
         self.input_surname.insert(tkinter.INSERT, "surname")
 
-        # Sex
+        # Gender
         self.label_sex = ttk.Label(self.contentframe, text='Sex:')
         self.checkbox_sex = ttk.Checkbutton(self.contentframe)
         self.checkbox_sex.state(['selected'])
@@ -208,34 +172,37 @@ class GeneratePersonWindow(Window):
         for child in self.data_ammount_frame.winfo_children():
             child.grid_configure(padx=2, pady=1)
 
-    def action_button(self):  # text = self.input_name.get().strip()
+    def action_button(self):
         file_name = self.input_table_name.get()
         dataSize = int(self.input_data_amount.get())
-        if len(file_name) > 1 and dataSize > 0:
+        if len(file_name) > 1 and dataSize > 0 and any_person_column_selected(self):
+            gender: Sex
             file = open(file_name + ".sql", "w")
             file.seek(0, 2)
             file.write(generate_column_name(self))
             file.write("VALUES ")
             for x in range(dataSize):
-                file.write(generate_person(self, Sex.MALE))
+                if randint(0, dataSize * 2) > dataSize:
+                    gender = Sex.MALE
+                else:
+                    gender = Sex.FEMALE
+                file.write(generate_person(self, gender))
                 if x != dataSize - 1:
                     file.write(",\n")
             file.write(";")
             file.close()
             print("Correctly generate " + str(dataSize) + " entity in " + file_name + ".sql file!")
         else:
-            print("Wrong input values")
+            print("Wrong input values or no one column checked!")
 
 
 class GUI(ttk.Frame):
-    """Main GUI class"""
-
     def __init__(self, parent, *args, **kwargs):
         ttk.Frame.__init__(self, parent, *args, **kwargs)
         self.root = parent
         self.init_gui()
 
-    def generatePerson(self):
+    def generate_person(self):
         self.new_win = tkinter.Toplevel(self.root)  # Set parent
         GeneratePersonWindow(self.new_win)
 
@@ -253,7 +220,7 @@ class GUI(ttk.Frame):
         self.root.grid_rowconfigure(0, weight=1)
 
         # Create Widgets
-        self.btn_generatePerson = ttk.Button(self, text='Generate person', command=self.generatePerson)
+        self.btn_generatePerson = ttk.Button(self, text='Generate person', command=self.generate_person)
         self.btn_generate = ttk.Button(self, text='Generate location', command=self.generateLocation)
 
         # Layout using grid

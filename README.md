@@ -10,4 +10,4 @@ Data table available:
 
 
 # Visualization
-![alt text](https://github.com/sebastianrziolkowski/sqlGenerate/master/window_visualization.png)
+![alt text](https://github.com/sebastianrziolkowski/sqlGenerate/blob/master/window_visualization.png)
